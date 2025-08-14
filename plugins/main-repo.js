@@ -1,78 +1,68 @@
-const fetch = require('node-fetch');
-const fs = require('fs');
-const path = require('path');
-const config = require('../config');
-const { cmd } = require('../command');
-
-// Verified contact
-const quotedContact = {
-  key: {
-    fromMe: false,
-    participant: `0@s.whatsapp.net`,
-    remoteJid: "status@broadcast"
-  },
-  message: {
-    contactMessage: {
-      displayName: "B.M.B VERIFIED ✅",
-      vcard: "BEGIN:VCARD\nVERSION:3.0\nFN:B.M.B VERIFIED ✅\nORG:BMB-TECH BOT;\nTEL;type=CELL;type=VOICE;waid=255767862457:+255 767 862457\nEND:VCARD"
-    }
-  }
-};
+const config = require('../config')
+const {cmd , commands} = require('../command')
+const os = require("os")
+const {runtime} = require('../lib/functions')
+const axios = require('axios')
+const {sleep} = require('../lib/functions')
+const fs = require('fs')
+const path = require('path')
 
 cmd({
-  pattern: "repo",
-  alias: ["sc", "script", "info"],
-  desc: "Fetch GitHub repository information",
-  react: "💗",
-  category: "info",
-  filename: __filename,
+    pattern: "repo",
+    alias: ["sc", "script", "repository"],
+    desc: "Fetch information about a GitHub repository.",
+    react: "📂",
+    category: "info",
+    filename: __filename,
 },
 async (conn, mek, m, { from, reply }) => {
-  const githubRepoURL = 'https://github.com/novaxmd/NOVA-XMD';
+    const githubRepoURL = 'https://github.com/novaxmd/NOVA-XMD';
 
-  try {
-    // Extract username & repo name
-    const [, username, repoName] = githubRepoURL.match(/github\.com\/([^/]+)\/([^/]+)/);
+    try {
+        // Extract username and repo name from the URL
+        const [, username, repoName] = githubRepoURL.match(/github\.com\/([^/]+)\/([^/]+)/);
 
-    // Fetch GitHub API
-    const response = await fetch(`https://api.github.com/repos/${username}/${repoName}`);
-    if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
-    const repoData = await response.json();
+        // Fetch repository details using GitHub API with axios
+        const response = await axios.get(`https://api.github.com/repos/${username}/${repoName}`);
+        
+        const repoData = response.data;
 
-    // Repo info style (moja safi)
-    const repoInfo = `
-╭━━━「 ${config.BOT_NAME} REPO 」━━━➤
-│ 📦 Name: ${repoData.name}
-│ 👤 Owner: ${repoData.owner.login}
-│ ⭐ Stars: ${repoData.stargazers_count}
-│ 🍴 Forks: ${repoData.forks_count}
-│ 🌐 URL: ${repoData.html_url}
-╰━━━━━━━━━━━━━━━━━━━━━━━➤
-🔗 ${config.DESCRIPTION}
-`;
+        // Format the repository information in new stylish format
+        const formattedInfo = `
+╭─〔 *IMMU MD REPOSITORY* 〕
+│
+├─ *📌 Repository Name:* ${repoData.name}
+├─ *👑 Owner:* 𝙽𝙾𝚅𝙰-𝚇𝙼𝙳
+├─ *⭐ Stars:* ${repoData.stargazers_count}
+├─ *⑂ Forks:* ${repoData.forks_count}
+├─ *🔗 GitHub Link:*
+│   ${repoData.html_url}
+│
+├─ *🌐 Join Channel:*
+│   https://whatsapp.com/channel/0029VawO6hgF6sn7k3SuVU3z
+│
+╰─ *⚡ Powered by 𝘕𝘖𝘝𝘈 𝘟𝘔𝘋*
+`.trim();
 
-    // Select random image from /plugins
-    const scsFolder = path.join(__dirname, "../plugins");
-    const images = fs.readdirSync(scsFolder).filter(f => /^menu\d+\.jpg$/i.test(f));
-    const imageOption = images.length > 0
-      ? { url: path.join(scsFolder, images[Math.floor(Math.random() * images.length)]) }
-      : { url: "https://i.ibb.co/KhYC4FY/1221bc0bdd2354b42b293317ff2adbcf-icon.png" };
+        // Send an image with the formatted info as a caption
+        await conn.sendMessage(from, {
+            image: { url: `https://i.postimg.cc/XYxDJF5j/f4110517a32c7a53aba605b9b3808106.jpg` }, // Replace with your image URL
+            caption: formattedInfo,
+            contextInfo: { 
+                mentionedJid: [m.sender],
+                forwardingScore: 999,
+                isForwarded: true,
+                forwardedNewsletterMessageInfo: {
+                    newsletterJid: '120363382023564830@newsletter',
+                    newsletterName: '𝗡𝗢𝗩𝗔-𝗫𝗠𝗗',
+                    serverMessageId: 143
+                }
+            }
+        }, { quoted: mek });
 
-    // Message options
-    const messageOptions = {
-      image: imageOption,
-      caption: repoInfo.trim(),
-      contextInfo: {
-        mentionedJid: [m.sender],
-        forwardingScore: 999,
-        isForwarded: true
-      }
-    };
-
-    await conn.sendMessage(from, messageOptions, { quoted: quotedContact });
-
-  } catch (error) {
-    console.error("Repo command error:", error);
-    reply(`❌ Error: ${error.message}`);
-  }
+    } catch (error) {
+        console.error("Error in repo command:", error);
+        reply("❌ Sorry, something went wrong while fetching the repository information. Please try again later.");
+    }
 });
+              
