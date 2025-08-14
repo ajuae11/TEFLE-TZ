@@ -17,7 +17,7 @@ const quotedContact = {
 };
 
 cmd({
-    pattern: "antidelete1",
+    pattern: "antidelete",
     alias: ['antidel', 'del'],
     desc: "Toggle anti-delete feature",
     category: "misc",
