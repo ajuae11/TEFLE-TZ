@@ -1,23 +1,8 @@
 const { cmd } = require('../command');
 const config = require("../config");
 
-// Contact message for verified context
-const quotedContact = {
-    key: {
-        fromMe: false,
-        participant: `0@s.whatsapp.net`,
-        remoteJid: "status@broadcast"
-    },
-    message: {
-        contactMessage: {
-            displayName: "B.M.B VERIFIED ✅",
-            vcard: "BEGIN:VCARD\nVERSION:3.0\nFN:B.M.B VERIFIED ✅\nORG:BMB-TECH BOT;\nTEL;type=CELL;type=VOICE;waid=255767862457:+255 767 862457\nEND:VCARD"
-        }
-    }
-};
-
 cmd({
-  'on': "text"
+  'on': "body"
 }, async (conn, m, store, {
   from,
   body,
@@ -28,73 +13,81 @@ cmd({
   reply
 }) => {
   try {
-    if (!isGroup || isAdmins || !isBotAdmins) return;
+    // Initialize warnings if not exists
+    if (!global.warnings) {
+      global.warnings = {};
+    }
 
-    // List of link patterns
+    // Only act in groups where bot is admin and sender isn't admin
+    if (!isGroup || isAdmins || !isBotAdmins) {
+      return;
+    }
+
+    // List of link patterns to detect
     const linkPatterns = [
-      /https?:\/\/(?:chat\.whatsapp\.com|wa\.me)\/\S+/gi,
-      /https?:\/\/(?:api\.whatsapp\.com|wa\.me)\/\S+/gi,
-      /wa\.me\/\S+/gi,
-      /https?:\/\/(?:t\.me|telegram\.me|telegram\.dog)\/\S+/gi,
-      /https?:\/\/(?:www\.)?[\w-]+\.com\/\S+/gi,
-      /https?:\/\/(?:www\.)?x\.com\/\S+/gi,
-      /https?:\/\/(?:www\.)?linkedin\.com\/\S+/gi,
-      /https?:\/\/(?:whatsapp\.com|channel\.me)\/\S+/gi,
-      /https?:\/\/(?:www\.)?reddit\.com\/\S+/gi,
-      /https?:\/\/(?:www\.)?discord\.(?:com|gg)\/\S+/gi,
-      /https?:\/\/(?:www\.)?twitch\.tv\/\S+/gi,
-      /https?:\/\/(?:www\.)?vimeo\.com\/\S+/gi,
-      /https?:\/\/(?:www\.)?dailymotion\.com\/\S+/gi,
-      /https?:\/\/(?:www\.)?medium\.com\/\S+/gi,
-      /https?:\/\/(?:www\.)?instagram\.com\/\S+/gi
+      /https?:\/\/(?:chat\.whatsapp\.com|wa\.me)\/\S+/gi, // WhatsApp links
+      /https?:\/\/(?:api\.whatsapp\.com|wa\.me)\/\S+/gi,  // WhatsApp API links
+      /wa\.me\/\S+/gi,                                    // WhatsApp.me links
+      /https?:\/\/(?:t\.me|telegram\.me)\/\S+/gi,         // Telegram links
+      /https?:\/\/(?:www\.)?\.com\/\S+/gi,                // Generic .com links
+      /https?:\/\/(?:www\.)?twitter\.com\/\S+/gi,         // Twitter links
+      /https?:\/\/(?:www\.)?linkedin\.com\/\S+/gi,        // LinkedIn links
+      /https?:\/\/(?:whatsapp\.com|channel\.me)\/\S+/gi,  // Other WhatsApp/channel links
+      /https?:\/\/(?:www\.)?reddit\.com\/\S+/gi,          // Reddit links
+      /https?:\/\/(?:www\.)?discord\.com\/\S+/gi,         // Discord links
+      /https?:\/\/(?:www\.)?twitch\.tv\/\S+/gi,           // Twitch links
+      /https?:\/\/(?:www\.)?vimeo\.com\/\S+/gi,           // Vimeo links
+      /https?:\/\/(?:www\.)?dailymotion\.com\/\S+/gi,     // Dailymotion links
+      /https?:\/\/(?:www\.)?medium\.com\/\S+/gi           // Medium links
     ];
 
+    // Check if message contains any forbidden links
     const containsLink = linkPatterns.some(pattern => pattern.test(body));
 
+    // Only proceed if anti-link is enabled and link is detected
     if (containsLink && config.ANTI_LINK === 'true') {
+      console.log(`Link detected from ${sender}: ${body}`);
 
-      // Delete message
+      // Try to delete the message
       try {
-        await conn.sendMessage(from, { delete: m.key });
+        await conn.sendMessage(from, {
+          delete: m.key
+        });
+        console.log(`Message deleted: ${m.key.id}`);
       } catch (error) {
         console.error("Failed to delete message:", error);
       }
 
-      // Prepare line-by-line message
-      const now = new Date();
-      const deleteTime = now.toLocaleTimeString('en-GB', { hour12: true });
-      const deleteDate = now.toLocaleDateString('en-GB');
+      // Update warning count for user
+      global.warnings[sender] = (global.warnings[sender] || 0) + 1;
+      const warningCount = global.warnings[sender];
 
-      const msg = 
-`🚨 *LINK DETECTED* 🚨
-📌 User: @${sender.split('@')[0]}
-📅 Date: ${deleteDate}
-⏰ Time: ${deleteTime}
-
-❌ REMOVED
-💡 BY NOVA XMD`;
-
-      // Send message with tag
-      await conn.sendMessage(from, {
-        text: msg,
-        mentions: [sender],
-        contextInfo: {
-          forwardingScore: 999,
-          isForwarded: true,
-          forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363382023564830@newsletter',
-            newsletterName: 'NOVA XMD ANTILINK',
-            serverMessageId: 143
-          }
-        }
-      }, { quoted: quotedContact });
-
-      // Remove user immediately
-      await conn.groupParticipantsUpdate(from, [sender], "remove");
+      // Handle warnings
+      if (warningCount < 4) {
+        // Send warning message
+        await conn.sendMessage(from, {
+          text: `‎*⚠️ LINKS ARE NOT ALLOWED ⚠️*\n` +
+                `*╭────⬡ WARNING ⬡────*\n` +
+                `*├▢ USER :* @${sender.split('@')[0]}!\n` +
+                `*├▢ COUNT : ${warningCount}*\n` +
+                `*├▢ REASON : LINK SENDING*\n` +
+                `*├▢ WARN LIMIT : 3*\n` +
+                `*╰────────────────*`,
+          mentions: [sender]
+        });
+      } else {
+        // Remove user if they exceed warning limit
+        await conn.sendMessage(from, {
+          text: `@${sender.split('@')[0]} *HAS BEEN REMOVED - WARN LIMIT EXCEEDED!*`,
+          mentions: [sender]
+        });
+        await conn.groupParticipantsUpdate(from, [sender], "remove");
+        delete global.warnings[sender];
+      }
     }
-
   } catch (error) {
     console.error("Anti-link error:", error);
     reply("❌ An error occurred while processing the message.");
   }
 });
+          
