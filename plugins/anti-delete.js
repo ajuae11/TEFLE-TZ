@@ -16,19 +16,6 @@ const quotedContact = {
     }
 };
 
-// Box helper
-function box(title, content) {
-    const contentLines = content.split('\n');
-    const maxLength = Math.max(title.length, ...contentLines.map(l => l.length));
-    const line = '═'.repeat(maxLength + 4);
-    const top = `╔${line}╗`;
-    const header = `║  ${title.padEnd(maxLength)}  ║`;
-    const sep = `╠${line}╣`;
-    const body = contentLines.map(l => `║  ${l.padEnd(maxLength)}  ║`).join('\n');
-    const bottom = `╚${line}╝`;
-    return [top, header, sep, body, bottom].join('\n');
-}
-
 cmd({
     pattern: "antidelete1",
     alias: ['antidel', 'del'],
@@ -38,7 +25,7 @@ cmd({
 },
 async (conn, mek, m, { from, reply, text, isCreator, sender }) => {
     if (!isCreator) return reply('❌ This command is only for the bot owner');
-    
+
     // Newsletter configuration
     const newsletterConfig = {
         contextInfo: {
@@ -57,63 +44,33 @@ async (conn, mek, m, { from, reply, text, isCreator, sender }) => {
         const currentStatus = await getAnti();
         const action = text?.toLowerCase().trim();
 
-        // Function to send boxed message
-        const sendBox = async (title, content) => {
-            const msg = box(title, content);
-            await conn.sendMessage(from, { text: msg, ...newsletterConfig }, { quoted: quotedContact });
-        };
-
         // Status
         if (!action || action === 'status') {
-            return sendBox(
-                'AntiDelete Status',
-                `Current Status: ${currentStatus ? '✅ ON' : '❌ OFF'}
-                
-Usage:
-• .antidelete on  - Enable protection
-• .antidelete off - Disable protection
-• .antidelete status - Check current status
-
-⚡ Powered by NOVA-TECH`
-            );
+            const msg = `🔒 *AntiDelete Status*\n\nCurrent Status: ${currentStatus ? '✅ ON' : '❌ OFF'}\n\nCommands:\n• .antidelete on\n• .antidelete off\n• .antidelete status\n\n⚡ Powered by NOVA-TECH`;
+            return await conn.sendMessage(from, { text: msg, ...newsletterConfig }, { quoted: quotedContact });
         }
 
         // Enable
         if (action === 'on') {
             await setAnti(true);
-            return sendBox(
-                '✅ Anti-delete Enabled',
-                `Message deletion protection is now active!
-
-⚡ Powered by NOVA-TECH`
-            );
+            const msg = '✅ *Anti-delete enabled*\n\nMessage deletion protection is now active!\n\n⚡ Powered by NOVA-TECH';
+            return await conn.sendMessage(from, { text: msg, ...newsletterConfig }, { quoted: quotedContact });
         } 
         // Disable
         else if (action === 'off') {
             await setAnti(false);
-            return sendBox(
-                '❌ Anti-delete Disabled',
-                `Message deletion protection has been turned off.
-
-⚡ Powered by NOVA-TECH`
-            );
+            const msg = '❌ *Anti-delete disabled*\n\nMessage deletion protection has been turned off.\n\n⚡ Powered by NOVA-TECH';
+            return await conn.sendMessage(from, { text: msg, ...newsletterConfig }, { quoted: quotedContact });
         } 
         // Invalid
         else {
-            return sendBox(
-                '⚠️ Invalid Command',
-                `Usage:
-• .antidelete on  - Enable protection
-• .antidelete off - Disable protection
-• .antidelete status - Check current status`
-            );
+            const msg = '⚠️ *Invalid Command*\n\nCommands:\n• .antidelete on\n• .antidelete off\n• .antidelete status';
+            return await conn.sendMessage(from, { text: msg, ...newsletterConfig }, { quoted: quotedContact });
         }
 
     } catch (e) {
         console.error("Error in antidelete command:", e);
-        return await sendBox(
-            '❌ Error',
-            'Failed to process your request. Please try again later.'
-        );
+        const msg = '❌ *Error occurred*\n\nFailed to process your request. Please try again later.';
+        return await conn.sendMessage(from, { text: msg, ...newsletterConfig }, { quoted: quotedContact });
     }
 });
