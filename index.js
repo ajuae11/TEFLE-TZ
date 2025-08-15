@@ -96,21 +96,23 @@ const port = process.env.PORT || 9090;
           })
       
   conn.ev.on('connection.update', (update) => {
-  const { connection, lastDisconnect } = update
-  if (connection === 'close') {
-  if (lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut) {
-  connectToWA()
-  }
-  } else if (connection === 'open') {
-  console.log('🧬 Installing Plugins')
-  const path = require('path');
-  fs.readdirSync("./plugins/").forEach((plugin) => {
-  if (path.extname(plugin).toLowerCase() == ".js") {
-  require("./plugins/" + plugin);
-  }
-  });
-  console.log('Plugins installed successful ✅')
-  console.log('Bot connected to whatsapp ✅')
+    const { connection, lastDisconnect } = update
+    if (connection === 'close') {
+        if (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut) {
+            connectToWA()
+        }
+    } else if (connection === 'open') {
+        console.log('🔌 Installing Plugins')
+        const path = require('path');
+        fs.readdirSync('./plugins/').forEach((plugin) => {
+            if (path.extname(plugin).toLowerCase() == '.js') {
+                require('./plugins/' + plugin);
+            }
+        });
+        console.log('Plugins installed successful ✅')
+        console.log('Bot connected to whatsapp ✅')
+    }
+});
   
   let greetings = [
   "🤖 NOVA-XMD BOT",
